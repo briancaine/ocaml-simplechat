@@ -1,5 +1,9 @@
 open Core
 
+module Protocol = struct
+  include SimpleChat_Protocol
+end
+
 module type UI_type = sig
 
     type t
@@ -28,7 +32,8 @@ let run_client ui_module_name client =
   let     ctx          = Conduit_lwt_unix.default_ctx in
   let%lwt flow, ic, oc = Conduit_lwt_unix.connect ~ctx client in
 
-  UI.run ui_conn (flow, ic, oc)
+  Protocol.stream_of_conn flow ic oc
+  |> UI.run ui_conn
 
 let run_server ui_module_name mode =
   let module UI = (val (ui_of_name ui_module_name) : UI_type) in
@@ -50,7 +55,8 @@ let run_server ui_module_name mode =
 
   let serve flow ic oc =
     let%lwt () =
-        UI.run ui_conn (flow, ic, oc)
+      Protocol.stream_of_conn flow ic oc
+      |> UI.run ui_conn (flow, ic, oc)
     in
     Lwt.wakeup wakener ();
     Lwt.return ()
