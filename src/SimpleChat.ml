@@ -45,10 +45,8 @@ let run_server ui_module_name mode =
 
   let%lwt ui_conn       = UI.begin_serving mode in
   let     ctx           = Conduit_lwt_unix.default_ctx in
-  let     stop, wakener = Lwt.wait () in
 
   let on_exn exn =
-    Lwt.wakeup wakener ();
     match exn with
     | Failure msg -> Printf.printf "Failure %s\n" msg
     | _           -> Printf.printf "Unknown failure\n"
@@ -57,12 +55,8 @@ let run_server ui_module_name mode =
   Lwt.async_exception_hook := on_exn;
 
   let serve flow ic oc =
-    let%lwt () =
-      Protocol.stream_of_conn flow ic oc
-      |> UI.run ui_conn
-    in
-    Lwt.wakeup wakener ();
-    Lwt.return ()
+    Protocol.stream_of_conn flow ic oc
+    |> UI.run ui_conn
   in
 
-  Conduit_lwt_unix.serve ~ctx ~mode ~on_exn ~stop serve
+  Conduit_lwt_unix.serve ~ctx ~mode ~on_exn serve

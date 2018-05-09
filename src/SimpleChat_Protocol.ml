@@ -152,6 +152,9 @@ let stream_of_conn flow ic oc =
     let is_stream_open = Ref.(stream_open.contents) in
     close_stream ();
     match exn with
+    | End_of_file ->
+       Event.ConnectionError "End_of_file"
+       |> Lwt.return_some
     | Lwt_io.Channel_closed desc ->
        Event.ConnectionError (Printf.sprintf "Channel closed: %s" desc)
        |> Lwt.return_some
