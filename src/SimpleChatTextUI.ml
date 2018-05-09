@@ -4,19 +4,34 @@ open Core
 
 module Imp = struct
 
-  type t = unit
+  type t =
+    | Server
+    | Client
 
   let begin_connection client =
-    Conduit_lwt_unix.sexp_of_client client
-    |> Sexplib.Sexp.to_string_hum
-    |> Lwt_io.printf "Connecting to: %s\n"
+    let%lwt () =
+      Conduit_lwt_unix.sexp_of_client client
+      |> Sexplib.Sexp.to_string_hum
+      |> Lwt_io.printf "Connecting to: %s\n" in
+    Lwt.return Client
 
   let begin_serving server =
-    Conduit_lwt_unix.sexp_of_server server
-    |> Sexplib.Sexp.to_string_hum
-    |> Lwt_io.printf "Listening on: %s\n"
+    let%lwt () =
+      Conduit_lwt_unix.sexp_of_server server
+      |> Sexplib.Sexp.to_string_hum
+      |> Lwt_io.printf "Listening on: %s\n" in
+    Lwt.return Server
 
-  let run () (flow, pull_stream, push) =
+  let run conn_type (flow, pull_stream, push) =
+    let%lwt () =
+      if conn_type = Client
+      then Lwt.return ()
+      else
+        Conduit_lwt_unix.endp_of_flow flow
+        |> Conduit.sexp_of_endp
+        |> Sexplib.Sexp.to_string_hum
+        |> Lwt_io.printf "Conversing with: %s\n" in
+
     let last_msg_id = ref 0L in
     let%lwt () =
       Lwt_io.printf
