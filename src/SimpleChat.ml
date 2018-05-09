@@ -4,6 +4,7 @@ module Protocol = struct
   include SimpleChat_Protocol
 end
 
+
 module type UI_type = sig
 
     type t
@@ -12,7 +13,9 @@ module type UI_type = sig
     val begin_serving : Conduit_lwt_unix.server -> t Lwt.t
     val run :
       t ->
-      (Conduit_lwt_unix.flow * Conduit_lwt_unix.ic * Conduit_lwt_unix.oc) ->
+      (Conduit_lwt_unix.flow *
+       Protocol.Event.t Lwt_stream.t *
+       (Protocol.Event.t -> unit Lwt.t)) ->
       unit Lwt.t
 
 end
@@ -56,7 +59,7 @@ let run_server ui_module_name mode =
   let serve flow ic oc =
     let%lwt () =
       Protocol.stream_of_conn flow ic oc
-      |> UI.run ui_conn (flow, ic, oc)
+      |> UI.run ui_conn
     in
     Lwt.wakeup wakener ();
     Lwt.return ()

@@ -1,8 +1,9 @@
-open Core
 open Sexplib.Std
 open Bin_prot.Std
 
 open Lwt.Infix
+
+open Core
 
 module Message = struct
 
@@ -86,6 +87,13 @@ module Event = struct
          )
     | _ -> failwith "shouldn't get here"
 
+  (* message confirmation *)
+  let confirmation_of_message = function
+    | Message Message.{ id; _ } ->
+       let time_delta = Time.Span.zero in
+       MessageConfirmation MessageConfirmation.{ id; time_delta; }
+    | _ -> failwith "shouldn't get here"
+
 end
 
 let stream_of_conn flow ic oc =
@@ -97,7 +105,7 @@ let stream_of_conn flow ic oc =
   in
 
   let message_confirmed MessageConfirmation.{ id; _ } =
-    match Core.Hashtbl.find_and_remove !awaiting_confirmation id with
+    match Hashtbl.find_and_remove !awaiting_confirmation id with
     | None -> None
     | Some Message.{ time; _ } ->
        let time_delta = Time.diff (Time.now()) time in
@@ -106,42 +114,69 @@ let stream_of_conn flow ic oc =
        |> Option.some
   in
 
-  let read_next_event () =
+  let push event =
+    (match event with
+     | Event.Message data ->
+        let key = Message.(data.id) in
+        Hashtbl.add_exn !awaiting_confirmation ~key ~data
+     | Event.ConnectionClosed ->
+        stream_open := false
+     | _ -> ());
+    Event.write_t oc event
+  in
+
+  let handle_event event =
+    match event with
+    | Event.Message msg ->
+       let%lwt () = Event.confirmation_of_message event
+                    |> push in
+       Lwt.return_some event
+    | Event.MessageConfirmation conf ->
+       (match message_confirmed conf with
+        | Some event -> event
+        | None       -> Event.unknown_confirmation_warning event)
+       |> Lwt.return_some
+    | Event.ConnectionClosed ->
+       close_stream ();
+       Lwt.return_some event
+    | Event.ConnectionWarning _ ->
+       Event.remote_to_local event
+       |> Lwt.return_some
+    | Event.ConnectionError _ ->
+       close_stream ();
+       Event.remote_to_local event
+       |> Lwt.return_some
+  in
+
+  let handle_read_exn exn =
+    let is_stream_open = Ref.(stream_open.contents) in
+    close_stream ();
+    match exn with
+    | Lwt_io.Channel_closed desc ->
+       Event.ConnectionError (Printf.sprintf "Channel closed: %s" desc)
+       |> Lwt.return_some
+    | Unix.Unix_error (Unix.EBADF, _, _) when not is_stream_open ->
+       Event.ConnectionClosed
+       |> Lwt.return_some
+    | _ ->
+       Event.ConnectionError
+         (Exn.to_string exn
+          |> Printf.sprintf "Unknown error: %s")
+       |> Lwt.return_some
+  in
+
+  let pull () =
     let is_stream_open = Ref.(stream_open.contents) in
     (* ^ less confusing than !stream_open *)
     if not is_stream_open
-    then
-      Lwt.return None
-    else (
+    then Lwt.return None
+    else
       try%lwt
-        let%lwt event = Event.read_t ic in
-        match event with
-        | Event.ConnectionClosed ->
-           close_stream();
-           event
-           |> Lwt.return_some
-        | Event.ConnectionWarning _ ->
-           Event.remote_to_local event
-           |> Lwt.return_some
-        | Event.ConnectionError _ ->
-           close_stream();
-           Event.remote_to_local event
-           |> Lwt.return_some
-        | Event.MessageConfirmation conf ->
-           (match message_confirmed conf with
-            | Some event -> event
-            | None       -> Event.unknown_confirmation_warning event)
-           |> Lwt.return_some
-        | _ -> event |> Lwt.return_some
+        Event.read_t ic >>= handle_event
       with
-      | Lwt_io.Channel_closed desc ->
-         close_stream();
-         Event.ConnectionError (Printf.sprintf "Channel closed: %s" desc)
-         |> Lwt.return_some
-      | _ ->
-         close_stream();
-         Event.ConnectionError "Unknown exception reading from stream"
-         |> Lwt.return_some
-    )
+      | exn -> handle_read_exn exn
   in
-  Lwt_stream.from read_next_event
+
+  flow,
+  Lwt_stream.from pull,
+  push
