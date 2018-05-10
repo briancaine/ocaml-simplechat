@@ -111,7 +111,7 @@ The main `UI_type.run` function will receive a stream of events from the partner
 
   Both of ^ those events will terminate the chat.
 
-* `ConnectionWarning` is currently only sent when a client confirms a nonexistent (or already confirmed) message. But it could be used for more general warnings in the future.
+* `ConnectionWarning` is currently only sent when a client confirms a nonexistent (or already confirmed) message. But it could be used for more general warnings in the future (from either side).
 
 * `Message` and `MessageConfirmation` are probably self explanatory.
 

@@ -76,9 +76,9 @@ module Event = struct
   *)
   let remote_to_local = function
     | ConnectionWarning str ->
-       ConnectionWarning (Printf.sprintf "Remote partner warned: %s" str)
+       ConnectionWarning (Printf.sprintf "%s (remote warning)" str)
     | ConnectionError str ->
-       ConnectionError (Printf.sprintf "Remote partner error: %s" str)
+       ConnectionError (Printf.sprintf "%s (remote error)" str)
     | Message msg ->
        Message Message.{ msg with author = Them; }
     | other -> other
