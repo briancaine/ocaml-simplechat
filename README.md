@@ -79,10 +79,42 @@ I created a module type ([`SimpleChat.UI_type`](https://github.com/briancaine/oc
 It has three operations:
 * signalling that we're starting a server
 * signalling that we're attempting to connect to a server
-* handling the connection (in either direction)
+* handling the connection (same function for server and client)
 
-UI modules 
+Each UI implementation registers a module with `SimpleChat.add_ui_type NAME MODULE`.
 
-The main SimpleChat module keeps an alist of registered
+Currently the implementations are manually registered in the main executables (sc_client, sc_server), but in the future, someone could add some sort of dynamic linking / plugin mechanism.
 
+### Protocol
 
+The protocol abstracts a pair of unidirectional event streams.
+
+```ocaml
+module Event = struct
+
+  type t =
+    | Message             of Message.t
+    | MessageConfirmation of MessageConfirmation.t
+    | ConnectionClosed
+    | ConnectionWarning   of string
+    | ConnectionError     of string [@@deriving sexp, bin_io]
+
+...
+
+end
+```
+
+The main `UI_type.run` function will receive a stream of events from the partner, and can also send events of its own.
+
+* `ConnectionClosed` is sent when the other user intentionally ends the chat, for whatever reason.
+* `ConnectionError` is sent when the connection unexpectedly terminates, whether on the local side or the remote side.
+
+  Both of ^ those events will terminate the chat.
+
+* `ConnectionWarning` is currently only sent when a client confirms a nonexistent (or already confirmed) message. But it could be used for more general warnings in the future.
+
+* `Message` and `MessageConfirmation` are probably self explanatory.
+
+## Afterthoughts
+
+TODO
