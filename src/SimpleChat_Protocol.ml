@@ -13,6 +13,10 @@ module Message = struct
     | Us
     | Them [@@deriving sexp, bin_io]
 
+  let string_of_author = function
+    | Us   -> "Us"
+    | Them -> "Them"
+
   type t = {
     id       : id;
     author   : author;
