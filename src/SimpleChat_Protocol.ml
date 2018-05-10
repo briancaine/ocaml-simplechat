@@ -66,12 +66,17 @@ module Event = struct
         Lwt.return ()
       ) oc
 
-  (* clarify when ConnectionError and ConnectionWarning are local vs remote *)
+  (* clarify when ConnectionError and ConnectionWarning are local vs remote
+
+     or update incoming messages (Us vs Them)
+  *)
   let remote_to_local = function
     | ConnectionWarning str ->
        ConnectionWarning (Printf.sprintf "Remote partner warned: %s" str)
     | ConnectionError str ->
        ConnectionError (Printf.sprintf "Remote partner error: %s" str)
+    | Message msg ->
+       Message Message.{ msg with author = Them; }
     | other -> other
 
   (* if the other partner tries to confirm receipt of a message that we're not
@@ -130,7 +135,8 @@ let stream_of_conn flow ic oc =
     | Event.Message msg ->
        let%lwt () = Event.confirmation_of_message event
                     |> push in
-       Lwt.return_some event
+       Event.remote_to_local event
+       |> Lwt.return_some
     | Event.MessageConfirmation conf ->
        (match message_confirmed conf with
         | Some event -> event
