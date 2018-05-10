@@ -21,6 +21,15 @@ let format_time_delta delta =
 
 open SimpleChat.Protocol
 
+let debug_log_stream buf =
+  Unix.with_file
+    "/tmp/testlog.txt"
+    ~mode:Unix.[O_CREAT; O_APPEND; O_WRONLY]
+    ~f:(fun file_desc ->
+        if String.length buf = Unix.single_write ~restart:true file_desc ~buf
+        then ()
+        else failwith "failed to write string")
+
 module Printable = struct
 
   type t = {
@@ -29,8 +38,7 @@ module Printable = struct
   }
 
   let height { contents; _ } =
-    String.split_lines contents
-    |> List.length
+    String.count contents ~f:((=) '\n')
 
   let draw_left_above { style; contents; } =
     let open ANSITerminal in
@@ -46,11 +54,31 @@ module Printable = struct
 
   let draw_list_left_above lst =
     let open ANSITerminal in
+    (let x, y = pos_cursor() in
+     Printf.sprintf "debugk01 %d %d\n" x y
+     |> debug_log_stream);
     save_cursor ();
-    move_cursor 0 (list_height lst);
+    (let x, y = pos_cursor() in
+     Printf.sprintf "debugk02 %d %d\n" x y
+     |> debug_log_stream);
     move_bol ();
-    List.iter lst ~f:(fun { style; contents; } -> print_string style contents);
-    restore_cursor()
+    (let x, y = pos_cursor() in
+     Printf.sprintf "debugk03 %d %d:%d\n" x y (list_height lst)
+     |> debug_log_stream);
+    move_cursor 0 (- (list_height lst));
+    List.iter lst ~f:(fun { style; contents; } ->
+    (let x, y = pos_cursor() in
+     Printf.sprintf "debugk04 %d %d\n" x y
+     |> debug_log_stream);
+                      erase Eol;
+                      print_string style contents);
+    (let x, y = pos_cursor() in
+     Printf.sprintf "debugk05 %d %d\n" x y
+     |> debug_log_stream);
+    restore_cursor();
+    (let x, y = pos_cursor() in
+     Printf.sprintf "debugk06 %d %d\n" x y
+     |> debug_log_stream)
 
   let blank size = {
     style    = [];
@@ -85,62 +113,56 @@ end
 module LogEvent = struct
 
   type severity =
-    | Message
-    | Info
+    | Normal
     | Warning
     | Error [@@deriving sexp]
 
   type t = {
     severity   : severity;
-    source     : Event.t;
+    source     : Event.t option;
     time       : Time.t;
     time_delta : Time.Span.t option;
     author     : Message.author option;
     contents   : Bytes.t;
-    message_id : Message.id option;
   } [@@deriving sexp]
 
   let of_event ev = match ev with
     | Event.Message Message.{ id; author; time; contents; } ->
        {
-         severity   = Message;
-         source     = ev;
+         severity   = Normal;
+         source     = Some ev;
          time;
          time_delta = None;
          author     = Some author;
          contents;
-         message_id = Some id;
        }
     | Event.MessageConfirmation _ -> failwith "shouldn't get here"
     | Event.ConnectionClosed ->
        {
-         severity   = Info;
-         source     = ev;
+         severity   = Normal;
+         source     = Some ev;
          time       = Time.now();
          time_delta = None;
          author     = None;
          contents   = "The remote user closed the chat.";
-         message_id = None;
        }
     | Event.ConnectionWarning contents ->
        {
          severity   = Warning;
-         source     = ev;
+         source     = Some ev;
          time       = Time.now();
          time_delta = None;
          author     = None;
          contents;
-         message_id = None;
        }
     | Event.ConnectionError contents ->
        {
          severity   = Error;
-         source     = ev;
+         source     = Some ev;
          time       = Time.now();
          time_delta = None;
          author     = None;
          contents;
-         message_id = None;
        }
 
   let printables_of_log_event {
@@ -217,36 +239,92 @@ module Imp = struct
     | Client [@@deriving sexp]
 
   type t = {
-    mode : mode;
+    mode               : mode;
+    mutable log_events : LogEvent.t list;
+    mutable line_count : int;
   } [@@deriving sexp]
 
-  let begin_connection _ =
-    Lwt.return { mode = Client; }
+  let rec redraw_state t =
+    let printables = List.map ~f:LogEvent.printables_of_log_event t.log_events
+                     |> List.concat in
+    let line_count = Printable.list_height printables in
+    let diff       = line_count - t.line_count in
+    if diff > 0
+    then (
+      ANSITerminal.scroll diff;
+      t.line_count <- line_count;
+      ANSITerminal.move_cursor 0 1
+    );
+    Printable.draw_list_left_above printables
 
-  let begin_serving _ =
-    LogEvent.{
-      severity = Message;
-      source = Event.ConnectionClosed;
-      time = Time.now();
-      time_delta = Time.Span.of_ms 345. |> Option.some;
-      author = Some Message.Us;
-      contents = "abjkvlaweravjklwerajwervawerjklvaewrawerjklvjl;kawejklvjkawerjiovawijorvijoaweroijvawer";
-      message_id = None;
-    }
-    |> LogEvent.printables_of_log_event
-    |> Printable.draw_list_left_above;
-    Lwt.return { mode = Server; }
+  let log_normal_string t contents =
+    t.log_events <- t.log_events @ [
+      LogEvent.{
+        severity = Normal;
+        time       = Time.now();
+        time_delta = Time.Span.zero |> Option.some; (* debug *)
+(*        time_delta = None; *)
+        author     = None;
+        source     = None;
+        contents;
+      }
+    ]
 
-  let run _ (flow, pull_stream, push) =
+  let log_event t ev =
+    t.log_events <- t.log_events @ [LogEvent.of_event ev]
+
+  let log_normal_string_redraw t contents =
+    log_normal_string t contents;
+    redraw_state t
+
+  let log_event_redraw t ev =
+    log_event t ev;
+    redraw_state t
+
+  let begin_connection client =
+    let state = {
+      mode       = Client;
+      log_events = [];
+      line_count = 0;
+    } in
+    Conduit_lwt_unix.sexp_of_client client
+    |> Sexplib.Sexp.to_string_hum
+    |> Printf.sprintf "Connecting to: %s"
+    |> log_normal_string_redraw state;
+    Lwt.return state
+
+  let begin_serving server =
+    let state = {
+      mode       = Client;
+      log_events = [];
+      line_count = 0;
+    } in
+    Conduit_lwt_unix.sexp_of_server server
+    |> Sexplib.Sexp.to_string_hum
+    |> Printf.sprintf "Listening on: %s"
+    |> log_normal_string_redraw state;
+    Lwt.return state
+
+  let run state (flow, pull_stream, push) =
+    Conduit_lwt_unix.endp_of_flow flow
+    |> Conduit.sexp_of_endp
+    |> Sexplib.Sexp.to_string_hum
+    |> Printf.sprintf "Conversing with: %s"
+    |> log_normal_string_redraw state;
 
     let rec read_send_message () =
-      Lwt_unix.sleep 1.0
+      let%lwt () = Lwt_unix.sleep 1.0 in
+      read_send_message()
     in
 
     let handle_event =
-      let open SimpleChat.Protocol in
       function
-      | ev -> Lwt.return ()
+      | Event.MessageConfirmation _ ->
+         log_normal_string_redraw state "debug finish: message confirmation";
+         Lwt.return ()
+      | ev ->
+         log_event_redraw state ev;
+         Lwt.return ()
     in
 
     Lwt_stream.iter_s handle_event pull_stream
