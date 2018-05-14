@@ -64,6 +64,14 @@ The basic usage for the server is:
 $ ./_build/default/src/sc_client.exe UI_MODULE PORT
 ```
 
+The two supported UI modules are:
+* text
+* web
+
+I started writing a fancier text interface using ANSITerminal (and the remnants are still in the repo), but it turned out to be much harder than I expected. I was kind of hoping for a "printf + colors" setup, but it's much more complicated than that.
+
+So instead I wrote a web UI that works decently enough.
+
 If you're using docker, the commands are the same, but you should prefix them with:
 ```
 $ docker run --rm -ti --net=host briancaine/ocaml-simplechat *rest of command as above*
