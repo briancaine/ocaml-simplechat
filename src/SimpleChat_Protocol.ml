@@ -26,6 +26,17 @@ module Message = struct
 
   let string_of_id = Int64.to_string
 
+  let to_yojson { id; author; time; contents; } : Yojson.Basic.json =
+    let unix_time = Time.(diff time epoch |>
+                          Span.to_int63_seconds_round_down_exn)
+                    |> Int63.to_float in
+    `Assoc [
+       "id",       `String (Int64.to_string id);
+       "author",   `String (string_of_author author);
+       "time",     `Float unix_time;
+       "contents", `String (Bytes.to_string contents);
+     ]
+
 end
 
 module MessageConfirmation = struct
@@ -34,6 +45,12 @@ module MessageConfirmation = struct
     id         : Message.id;
     time_delta : Time.Span.t;
   } [@@deriving sexp, bin_io]
+
+  let to_yojson { id; time_delta; } =
+    `Assoc [
+       "id", `String (Int64.to_string id);
+       "time_delta", `Float (Time.Span.to_ns time_delta);
+     ]
 
 end
 
@@ -102,6 +119,25 @@ module Event = struct
        let time_delta = Time.Span.zero in
        MessageConfirmation MessageConfirmation.{ id; time_delta; }
     | _ -> failwith "shouldn't get here"
+
+  let to_yojson =
+    let type_exp str value : Yojson.Basic.json =
+      `Assoc ["type", `String str; "value", value;]
+    in
+    function
+    | Message msg ->
+       Message.to_yojson msg |> type_exp "message"
+    | MessageConfirmation conf ->
+       MessageConfirmation.to_yojson conf |> type_exp "message_confirmation"
+    | ConnectionClosed ->
+       type_exp "connection_closed" `Null
+    | ConnectionWarning warn ->
+       type_exp "connection_warning" (`String warn)
+    | ConnectionError err ->
+       type_exp "connection_error" (`String err)
+
+  let to_yojson_list lst : Yojson.Basic.json =
+    `List (List.map ~f:to_yojson lst)
 
 end
 

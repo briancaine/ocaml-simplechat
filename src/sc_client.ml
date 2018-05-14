@@ -3,6 +3,7 @@ open Core
 (* loading UI implementations *)
 let () = SimpleChatTextUI.init()
 let () = SimpleChatPrettyTextUI.init()
+let () = SimpleChatWebUI.init()
 
 (* kicking off main function *)
 let () =

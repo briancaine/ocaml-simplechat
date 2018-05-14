@@ -1,0 +1,67 @@
+body {
+  padding: 0px;
+  margin: 0px;
+}
+
+ul#log {
+  float: top;
+  height: 95%;
+  padding: 0px;
+  margin: 0px;
+  overflow: scroll;
+}
+
+ul#log {
+  background: #cba;
+}
+
+ul#log
+
+ul#log li {
+  list-style-type: none;
+  width: 100%;
+}
+
+ul#log li.even {
+  background: #dbb;
+}
+
+ul#log li.odd {
+  background: #adb;
+}
+
+ul#log span.error {
+  color: red;
+}
+
+ul#log span.warning {
+  color: yellow;
+}
+
+ul#log span.closed {
+  color: blue;
+}
+
+ul#log li .timestamp {
+  width: 5%;
+  float: left;
+}
+
+ul#log li .contents {
+  width: 75%;
+  float: left;
+}
+
+ul#log li .author {
+  width: 5%;
+  float: left;
+}
+
+ul#log li .roundtrip {
+  width: 5%;
+  float: left;
+}
+
+input#chat_input {
+  width: 80%;
+}

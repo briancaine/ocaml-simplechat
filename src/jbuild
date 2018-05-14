@@ -5,7 +5,8 @@
 (executables
  ((names (sc_client sc_server))
   (libraries
-   (core conduit-lwt-unix lwt bin_prot ANSITerminal))
+   (core conduit-lwt-unix lwt bin_prot ANSITerminal cohttp cohttp-lwt
+         cohttp-lwt-unix yojson))
   (preprocess
    (pps
     (ppx_deriving

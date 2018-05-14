@@ -17,6 +17,9 @@ I developed SimpleChat using Ocaml 4.04.2 and the following libraries:
 * ppx_sexp_conv
 * conduit-lwt-unix
 * jbuilder
+* ANSITerminal
+* cohttp, cohttp-lwt, and cohttp-lwt-unix
+* yojson
 
 You can install them using opam:
 ```
@@ -25,7 +28,7 @@ $ opam switch 4.04.2
 ```
 
 ```
-$ opam install core lwt.3.3.0 bin_prot ppx_deriving ppx_bin_prot ppx_sexp_conv conduit-lwt-unix jbuilder
+$ opam install core lwt.3.3.0 bin_prot ppx_deriving ppx_bin_prot ppx_sexp_conv conduit-lwt-unix jbuilder ANSITerminal cohttp cohttp-lwt cohttp-lwt-unix
 ...
 ```
 
@@ -117,4 +120,18 @@ The main `UI_type.run` function will receive a stream of events from the partner
 
 ## Afterthoughts
 
-TODO
+### Wire Protocol
+
+I think I'm pretty happy with my wire protocol. I used bin_io to serialize the structures.
+
+The code that turns an input channel into a stream could be improved, because it allocates several new buffers each cycle. Reusing a single buffer each read would be better.
+
+### UI
+
+In the past, I tried to use Core's command line parsing library. It's powerful, but also very complicated.
+
+I tried to get by without using it, and while my code works, I think I'd want to incorporate command line parsing into the UI module type.
+
+Also, the UI module type lays out how the actual chatting happens very clearly. But it doesn't cover setting up and tearing down chat sessions all that well.
+
+In the future, I'd pay more attention to that.

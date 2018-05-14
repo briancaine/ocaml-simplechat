@@ -41,7 +41,14 @@ let run_client ui_module_name client =
 let run_server ui_module_name mode =
   let module UI = (val (ui_of_name ui_module_name) : UI_type) in
 
-  Conduit_lwt_unix.set_max_active 1;
+  (* todo:
+
+     change this set_max_active to move that logic to serve
+
+     because the web ui is based on conduit too:
+
+   Conduit_lwt_unix.set_max_active 1;
+ *)
 
   let%lwt ui_conn       = UI.begin_serving mode in
   let     ctx           = Conduit_lwt_unix.default_ctx in
