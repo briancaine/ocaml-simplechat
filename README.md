@@ -61,7 +61,7 @@ $ ./_build/default/src/sc_client.exe UI_MODULE IP_ADDRESS PORT
 
 The basic usage for the server is:
 ```
-$ ./_build/default/src/sc_client.exe UI_MODULE PORT
+$ ./_build/default/src/sc_server.exe UI_MODULE PORT
 ```
 
 The two supported UI modules are:
