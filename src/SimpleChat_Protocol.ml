@@ -165,7 +165,7 @@ let stream_of_conn flow ic oc =
         let key = Message.(data.id) in
         Hashtbl.add_exn !awaiting_confirmation ~key ~data
      | Event.ConnectionClosed ->
-        stream_open := false
+        close_stream ()
      | _ -> ());
     Event.write_t oc event
   in
@@ -196,22 +196,22 @@ let stream_of_conn flow ic oc =
 
   let handle_read_exn exn =
     let is_stream_open = Ref.(stream_open.contents) in
-    close_stream ();
-    match exn with
-    | End_of_file ->
-       Event.ConnectionError "End_of_file"
-       |> Lwt.return_some
-    | Lwt_io.Channel_closed desc ->
-       Event.ConnectionError (Printf.sprintf "Channel closed: %s" desc)
-       |> Lwt.return_some
-    | Unix.Unix_error (Unix.EBADF, _, _) when not is_stream_open ->
-       Event.ConnectionClosed
-       |> Lwt.return_some
-    | _ ->
-       Event.ConnectionError
-         (Exn.to_string exn
-          |> Printf.sprintf "Unknown error: %s")
-       |> Lwt.return_some
+    if not is_stream_open
+    then (* we had an exception because we closed the stream from our end,
+            nothing else to read *)
+      Lwt.return_some Event.ConnectionClosed
+    else (
+      close_stream ();
+      match exn with
+      | End_of_file ->
+         Event.ConnectionError "End_of_file"
+         |> Lwt.return_some
+      | _ ->
+         Event.ConnectionError
+           (Exn.to_string exn
+            |> Printf.sprintf "Unknown error: %s")
+         |> Lwt.return_some
+    )
   in
 
   let pull () =
@@ -229,3 +229,7 @@ let stream_of_conn flow ic oc =
   flow,
   Lwt_stream.from pull,
   push
+
+type push_func = Event.t -> unit Lwt.t
+
+type stream = Conduit_lwt_unix.flow * Event.t Lwt_stream.t * push_func

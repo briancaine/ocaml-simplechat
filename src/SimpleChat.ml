@@ -10,13 +10,9 @@ module type UI_type = sig
     type t
 
     val begin_connection : Conduit_lwt_unix.client -> t Lwt.t
-    val begin_serving : Conduit_lwt_unix.server -> t Lwt.t
-    val run :
-      t ->
-      (Conduit_lwt_unix.flow *
-       Protocol.Event.t Lwt_stream.t *
-       (Protocol.Event.t -> unit Lwt.t)) ->
-      unit Lwt.t
+    val begin_serving    : Conduit_lwt_unix.server -> t Lwt.t
+
+    val run : t -> Protocol.stream -> unit Lwt.t
 
 end
 
