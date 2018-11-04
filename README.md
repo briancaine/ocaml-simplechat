@@ -1,5 +1,7 @@
 # SimpleChat
 
+[![Build Status](https://travis-ci.org/briancaine/ocaml-simplechat.svg?branch=master)](https://travis-ci.org/briancaine/ocaml-simplechat)
+
 This is a little toy Ocaml project.
 
 It's supposed to implement a simple chat program. One half's a server, one half's a client, and they can talk to each other.
