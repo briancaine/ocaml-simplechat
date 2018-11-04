@@ -9,6 +9,8 @@ depends: [
   "jbuilder" {build}
   "ounit" {with-test}
   "core"
+  "yojson"
+  "sexplib"
   "lwt" { = "3.3.0" }
   "bin_prot"
   "ppx_deriving"

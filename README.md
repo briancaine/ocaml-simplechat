@@ -20,6 +20,7 @@ I developed SimpleChat using Ocaml 4.04.2 and the following libraries:
 * ANSITerminal
 * cohttp, cohttp-lwt, and cohttp-lwt-unix
 * yojson
+* sexplib
 
 You can install them using opam:
 ```
@@ -28,7 +29,7 @@ $ opam switch 4.04.2
 ```
 
 ```
-$ opam install core lwt.3.3.0 bin_prot ppx_deriving ppx_bin_prot ppx_sexp_conv conduit-lwt-unix jbuilder ANSITerminal cohttp cohttp-lwt cohttp-lwt-unix
+$ opam install core lwt.3.3.0 bin_prot ppx_deriving ppx_bin_prot ppx_sexp_conv conduit-lwt-unix jbuilder ANSITerminal cohttp cohttp-lwt cohttp-lwt-unix yojson sexplib
 ...
 ```
 
