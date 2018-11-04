@@ -40,9 +40,10 @@
      lwt.ppx)))))
 
 (executables
- ((names     (sc_client sc_server))
-  (modules   (sc_client sc_server))
-  (libraries (core SimpleChat SimpleChatTextUI SimpleChatWebUI))
+ ((names        (sc_client sc_server))
+  (public_names (sc_client sc_server))
+  (modules      (sc_client sc_server))
+  (libraries    (core SimpleChat SimpleChatTextUI SimpleChatWebUI))
   (preprocess
    (pps
     (ppx_deriving
@@ -50,20 +51,19 @@
      ppx_bin_prot
      lwt.ppx)))))
 
-;(executables
-; ((names     (run_sc_tests))
-;  (modules   (run_sc_tests))
-;  (libraries (core SimpleChat
-;              ounit))
-;  (preprocess
-;   (pps
-;    (ppx_deriving
-;     ppx_sexp_conv
-;     ppx_bin_prot
-;     lwt.ppx)))))
+(executables
+ ((names     (run_sc_tests))
+  (modules   (run_sc_tests))
+  (libraries (core SimpleChat
+              oUnit))
+  (preprocess
+   (pps
+    (ppx_deriving
+     ppx_sexp_conv
+     ppx_bin_prot
+     lwt.ppx)))))
 
-;(alias
-; (name   runtest)
-; (action (run ./run_sc_tests.exe)))
-
-;(tests (names run_sc_tests))
+(alias
+ ((name   runtest)
+  (deps   (run_sc_tests.exe))
+  (action (run ./run_sc_tests.exe))))

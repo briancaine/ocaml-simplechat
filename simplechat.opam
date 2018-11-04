@@ -1,0 +1,27 @@
+opam-version: "1.2"
+name: "simplechat"
+maintainer: "brian.d.caine@gmail.com"
+authors: [
+  "Brian Caine"
+]
+depends: [
+  "ocamlfind" {build}
+  "jbuilder" {build}
+  "ounit" {with-test}
+  "core"
+  "lwt" { = "3.3.0" }
+  "bin_prot"
+  "ppx_deriving"
+  "ppx_bin_prot"
+  "ppx_sexp_conv"
+  "conduit-lwt-unix"
+  "cohttp"
+  "cohttp-lwt"
+  "cohttp-lwt-unix"
+]
+build: [
+  [make]
+]
+build-test: [
+  [make "test"]
+]
