@@ -3,7 +3,8 @@ FROM ocaml/opam
 RUN sudo apt-get -y update
 
 RUN opam repository set-url default https://opam.ocaml.org && \
-  opam switch -y 4.04.2
+  opam switch -y 4.04.2 && \
+  opam update
 
 RUN opam install -y core lwt bin_prot ppx_deriving ppx_bin_prot ppx_sexp_conv conduit-lwt-unix jbuilder ANSITerminal cohttp cohttp-lwt cohttp-lwt-unix yojson sexplib
 RUN opam install -y utop
@@ -12,6 +13,7 @@ RUN opam install -y lwt.3.3.0 # apparently 3.0.0 wasn't preprocessing properly?
 
 COPY ./src ./src
 COPY ./webstatic ./webstatic
+COPY simplechat.opam .
 
 # sometimes stray build stuff gets dragged in, but dragged in as root
 # so we should be able to overwrite them if necessary
